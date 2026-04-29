@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Brand {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  website        String?
+  phone          String?
+  officeAddress  String?
+  socialHandle   String?
+  tagline        String?
+  primaryColor   String   @default("#111827")
+  secondaryColor String   @default("#C6A15B")
+  accentColor    String   @default("#FFFFFF")
+  typography     String?
+  designRules    String?
+  defaultCta     String?
+  logoAssetId    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  assets          BrandAsset[]
+  generationJobs  GenerationJob[]
+  promptHistory   PromptHistory[]
+  webhookRequests WebhookRequest[]
+}
+
+model BrandAsset {
+  id          String   @id @default(cuid())
+  brandId     String
+  type        String
+  name        String
+  fileName    String
+  mimeType    String
+  size        Int
+  storageKey  String
+  publicUrl   String
+  description String?
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@index([type])
+}
+
+model CampaignTemplate {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  name           String
+  campaignType   String
+  description    String
+  promptScaffold String
+  layoutGuidance String
+  defaultCta     String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([campaignType])
+  @@index([isActive])
+}
+
+model GenerationJob {
+  id                  String    @id @default(cuid())
+  brandId             String
+  requestId           String?   @unique
+  source              String    @default("manual")
+  prompt              String
+  enhancedPrompt      String
+  campaignType        String
+  aspectRatio         String
+  outputFormat        String    @default("png")
+  quality             String    @default("medium")
+  status              String    @default("queued")
+  imageUrl            String?
+  thumbnailUrl        String?
+  storageKey          String?
+  thumbnailStorageKey String?
+  error               String?
+  metadata            String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  completedAt         DateTime?
+
+  brand           Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  webhookRequests WebhookRequest[]
+
+  @@index([brandId])
+  @@index([campaignType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model WebhookRequest {
+  id              String   @id @default(cuid())
+  requestId       String   @unique
+  brandId         String?
+  generationJobId String?
+  status          String   @default("received")
+  payload         String
+  response        String?
+  error           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  brand         Brand?         @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  generationJob GenerationJob? @relation(fields: [generationJobId], references: [id], onDelete: SetNull)
+
+  @@index([brandId])
+  @@index([status])
+}
+
+model PromptHistory {
+  id             String   @id @default(cuid())
+  brandId        String
+  prompt         String
+  enhancedPrompt String
+  campaignType   String
+  aspectRatio    String
+  createdAt      DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@index([campaignType])
+  @@index([createdAt])
+}
