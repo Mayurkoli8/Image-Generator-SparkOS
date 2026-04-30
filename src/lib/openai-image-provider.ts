@@ -1,6 +1,6 @@
 import OpenAI from "openai";
+import type { ImagesResponse } from "openai/resources/images";
 import { getOpenAiApiKey, getOpenAiImageModel, getOpenAiImageQuality } from "@/lib/env";
-import { getAspectRatioConfig } from "@/lib/campaigns";
 
 export type ProviderResult = {
   buffer: Buffer;
@@ -9,6 +9,34 @@ export type ProviderResult = {
   provider: string;
   usedReferences: string[];
 };
+
+type OpenAiImageSize = "1024x1024" | "1024x1536" | "1536x1024";
+type OpenAiImageQuality = "low" | "medium" | "high" | "auto";
+type OpenAiImageFormat = "png" | "jpeg" | "webp";
+
+function getOpenAiSize(aspectRatio: string): OpenAiImageSize {
+  if (aspectRatio === "16:9") {
+    return "1536x1024";
+  }
+
+  if (aspectRatio === "4:5" || aspectRatio === "9:16") {
+    return "1024x1536";
+  }
+
+  return "1024x1024";
+}
+
+function getOpenAiQuality(quality: string): OpenAiImageQuality {
+  return ["low", "medium", "high", "auto"].includes(quality) ? (quality as OpenAiImageQuality) : "medium";
+}
+
+function getOpenAiFormat(format: string): OpenAiImageFormat {
+  if (format === "jpg") {
+    return "jpeg";
+  }
+
+  return ["png", "jpeg", "webp"].includes(format) ? (format as OpenAiImageFormat) : "png";
+}
 
 async function fetchRemoteFile(url: string, index: number) {
   const response = await fetch(url);
@@ -35,33 +63,31 @@ export async function generateImageWithOpenAi(options: {
   }
 
   const client = new OpenAI({ apiKey });
-  const size = `${getAspectRatioConfig(options.aspectRatio).width}x${getAspectRatioConfig(options.aspectRatio).height}`;
+  const size = getOpenAiSize(options.aspectRatio);
   const model = getOpenAiImageModel();
-  const quality = getOpenAiImageQuality();
-  const safeFormat = options.outputFormat === "jpg" ? "jpeg" : options.outputFormat;
+  const quality = getOpenAiQuality(getOpenAiImageQuality());
+  const safeFormat = getOpenAiFormat(options.outputFormat);
 
-  let response: any;
+  let response: ImagesResponse;
   const usedReferences = options.referenceImageUrls.slice(0, 4);
 
   if (usedReferences.length > 0) {
     const files = await Promise.all(usedReferences.map((url, index) => fetchRemoteFile(url, index)));
-    response = await (client.images as any).edit({
+    response = await client.images.edit({
       model,
       prompt: options.prompt,
       image: files,
       size,
       quality,
       output_format: safeFormat,
-      response_format: "b64_json",
     });
   } else {
-    response = await (client.images as any).generate({
+    response = await client.images.generate({
       model,
       prompt: options.prompt,
       size,
       quality,
       output_format: safeFormat,
-      response_format: "b64_json",
     });
   }
 

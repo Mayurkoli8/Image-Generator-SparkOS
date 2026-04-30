@@ -29,7 +29,7 @@ export function WebhookSettingsClient({
     () =>
       JSON.stringify(
         {
-          requestId: "req_" + Math.random().toString(36).slice(2, 8),
+          requestId: "req_sample_001",
           brandId,
           campaignType: "new_year",
           prompt: payloadPrompt,

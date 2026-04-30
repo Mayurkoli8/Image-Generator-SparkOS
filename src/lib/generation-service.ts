@@ -6,7 +6,7 @@ import { safeJsonParse } from "@/lib/utils";
 import { buildEnhancedPrompt } from "@/lib/prompt-builder";
 import { generateImageWithOpenAi } from "@/lib/openai-image-provider";
 import { composePoster } from "@/lib/poster-composer";
-import { guessContentType, readStoredFile, saveBufferToStorage } from "@/lib/storage";
+import { readStoredFile, saveBufferToStorage } from "@/lib/storage";
 
 type GeneratePosterInput = {
   brandId: string;
