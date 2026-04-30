@@ -36,6 +36,20 @@ src/lib/
 render.yaml                     Render blueprint
 ```
 
+## Fast Deploy For You
+
+If you only care about getting it live on Render:
+
+1. Push the repo to GitHub.
+2. Create a new Render Web Service from that repo.
+3. Use the repo's `render.yaml` when Render asks.
+4. Add `OPENAI_API_KEY`.
+5. Add `PUBLIC_APP_URL` after Render gives you your live URL.
+   Example: `https://your-app-name.onrender.com`
+6. Deploy.
+
+The app now auto-prepares safe defaults for SQLite and storage on Render, so you should not need to manually add `DATABASE_URL`.
+
 ## Local Setup
 
 ```bash
@@ -79,8 +93,8 @@ Manual Render settings:
 Build Command: npm ci && npm run render-build
 Start Command: npm run start
 Health Check Path: /api/health
-DATABASE_URL: file:/var/data/brandposter.db
-LOCAL_STORAGE_DIR: /var/data/storage
+DATABASE_URL: optional now, the app will default this on Render
+LOCAL_STORAGE_DIR: optional now, the app will default this on Render
 ```
 
 ## n8n Webhook
