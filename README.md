@@ -48,7 +48,7 @@ If you only care about getting it live on Render:
    Example: `https://your-app-name.onrender.com`
 6. Deploy.
 
-The app now auto-prepares safe defaults for SQLite and storage on Render, so you should not need to manually add `DATABASE_URL`.
+The app now auto-prepares safe defaults for SQLite and storage on Render inside the app folder, so you should not need to manually add `DATABASE_URL`.
 
 ## Local Setup
 
@@ -79,7 +79,7 @@ RATE_LIMIT_MAX="20"
 
 ## Render Deployment
 
-The included `render.yaml` provisions a Node web service and a persistent disk.
+The included `render.yaml` provisions a Node web service with zero extra setup.
 
 1. Push this repo to GitHub.
 2. In Render, create a Blueprint from the repo or create a Web Service manually.
@@ -93,8 +93,8 @@ Manual Render settings:
 Build Command: npm ci && npm run render-build
 Start Command: npm run start
 Health Check Path: /api/health
-DATABASE_URL: optional now, the app will default this on Render
-LOCAL_STORAGE_DIR: optional now, the app will default this on Render
+DATABASE_URL: do not set unless you specifically want a custom location
+LOCAL_STORAGE_DIR: do not set unless you specifically want a custom location
 ```
 
 ## n8n Webhook

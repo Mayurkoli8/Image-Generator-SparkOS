@@ -6,17 +6,9 @@ services:
     buildCommand: npm ci && npm run render-build
     startCommand: npm run start
     healthCheckPath: /api/health
-    disk:
-      name: brandposter-data
-      mountPath: /var/data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 24
-      - key: DATABASE_URL
-        value: file:/var/data/brandposter.db
-      - key: LOCAL_STORAGE_DIR
-        value: /var/data/storage
       - key: OPENAI_IMAGE_MODEL
         value: gpt-image-2
       - key: OPENAI_IMAGE_QUALITY

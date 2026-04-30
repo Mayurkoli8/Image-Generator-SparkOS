@@ -44,15 +44,18 @@ const existing = fs.existsSync(envPath)
   ? parseEnvFile(fs.readFileSync(envPath, "utf8"))
   : {};
 
+const renderDatabaseUrl = "file:./.render-data/brandposter.db";
+const renderStorageDir = "./.render-data/storage";
+
 const defaults = {
   DATABASE_URL:
     process.env.DATABASE_URL ||
     existing.DATABASE_URL ||
-    (process.env.RENDER ? "file:/var/data/brandposter.db" : "file:./dev.db"),
+    (process.env.RENDER ? renderDatabaseUrl : "file:./dev.db"),
   LOCAL_STORAGE_DIR:
     process.env.LOCAL_STORAGE_DIR ||
     existing.LOCAL_STORAGE_DIR ||
-    (process.env.RENDER ? "/var/data/storage" : "./.data/storage"),
+    (process.env.RENDER ? renderStorageDir : "./.data/storage"),
   OPENAI_IMAGE_MODEL:
     process.env.OPENAI_IMAGE_MODEL || existing.OPENAI_IMAGE_MODEL || "gpt-image-2",
   OPENAI_IMAGE_QUALITY:
@@ -79,6 +82,25 @@ if (process.env.PUBLIC_APP_URL) {
 if (process.env.WEBHOOK_SECRET) {
   merged.WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 }
+
+function ensureRuntimeDirectories(databaseUrl, storageDir) {
+  if (databaseUrl.startsWith("file:")) {
+    const sqlitePath = databaseUrl.slice("file:".length);
+    const resolvedSqlitePath = path.isAbsolute(sqlitePath)
+      ? sqlitePath
+      : path.resolve(root, sqlitePath);
+
+    fs.mkdirSync(path.dirname(resolvedSqlitePath), { recursive: true });
+  }
+
+  const resolvedStorageDir = path.isAbsolute(storageDir)
+    ? storageDir
+    : path.resolve(root, storageDir);
+
+  fs.mkdirSync(resolvedStorageDir, { recursive: true });
+}
+
+ensureRuntimeDirectories(merged.DATABASE_URL, merged.LOCAL_STORAGE_DIR);
 
 const output = [
   "# Auto-prepared environment defaults for local dev and Render",
