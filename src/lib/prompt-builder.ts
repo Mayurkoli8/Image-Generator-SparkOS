@@ -46,7 +46,7 @@ export function buildEnhancedPrompt(options: PromptOptions | PromptWithBrandInfo
     `Format: ${options.aspectRatio} poster, crisp high-resolution photorealistic real estate imagery with integrated text and branding.`,
     
     "POSTER LAYOUT & COMPOSITION:",
-    "- Top-left corner: Place the exact brand logo (with clean white background card if needed)",
+    "- Top-left corner: Leave space for logo (will be added after generation)",
     brandInfo.headline ? `- Main headline (centered top area): "${brandInfo.headline}"` : "- Include a compelling main headline in the top-center area",
     brandInfo.headline ? `- Subheadline: "${options.brand.tagline || 'Premium Real Estate'}"` : null,
     "- Bottom footer: Semi-transparent dark bar with brand information and contact details",
@@ -56,7 +56,7 @@ export function buildEnhancedPrompt(options: PromptOptions | PromptWithBrandInfo
     "DESIGN REQUIREMENTS:",
     "- Background must be stunning real estate imagery (luxury interiors/exteriors, natural lighting)",
     "- Text must be clearly readable with excellent contrast and professional typography",
-    "- Logo should be perfectly integrated in top-left with professional spacing",
+    "- Leave clean white space in top-left (approximately 22% width × 9.5% height) for logo placement",
     "- Use brand colors in footer bar and accents throughout",
     "- Maintain premium, sophisticated aesthetic appropriate for luxury real estate",
     "- All text must be sharp, legible, and properly positioned for social media",
