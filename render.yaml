@@ -12,7 +12,7 @@ services:
       - key: OPENAI_IMAGE_MODEL
         value: gpt-image-1.5
       - key: OPENAI_IMAGE_QUALITY
-        value: medium
+        value: high
       - key: RATE_LIMIT_WINDOW_MS
         value: 60000
       - key: RATE_LIMIT_MAX

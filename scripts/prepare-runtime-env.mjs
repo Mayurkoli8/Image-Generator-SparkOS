@@ -59,7 +59,7 @@ const defaults = {
   OPENAI_IMAGE_MODEL:
     process.env.OPENAI_IMAGE_MODEL || existing.OPENAI_IMAGE_MODEL || "gpt-image-1.5",
   OPENAI_IMAGE_QUALITY:
-    process.env.OPENAI_IMAGE_QUALITY || existing.OPENAI_IMAGE_QUALITY || "medium",
+    process.env.OPENAI_IMAGE_QUALITY || existing.OPENAI_IMAGE_QUALITY || "high",
   RATE_LIMIT_WINDOW_MS:
     process.env.RATE_LIMIT_WINDOW_MS || existing.RATE_LIMIT_WINDOW_MS || "60000",
   RATE_LIMIT_MAX:

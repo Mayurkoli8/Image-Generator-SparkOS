@@ -172,14 +172,12 @@ function analyzeWebsite(html: string) {
     getMeta(html, ["description", "og:description", "twitter:description"]) || null;
   const keywords = getMeta(html, ["keywords"]);
   const text = htmlToText(html);
-  const visibleSummary = compactText(text, 260);
   const instagram = extractInstagramUrl(html);
 
   return {
     title: title ? compactText(title, 120) : null,
     description: description ? compactText(description, 220) : null,
     keywords: keywords ? compactText(keywords, 160) : null,
-    visibleSummary,
     phone: extractPhone(text),
     officeAddress: extractAddress(text),
     instagram,
@@ -223,10 +221,6 @@ export async function scrapeBrandResearch(options: BrandResearchOptions): Promis
 
       if (website.keywords) {
         contextLines.push(`Website keywords: ${website.keywords}`);
-      }
-
-      if (website.visibleSummary) {
-        contextLines.push(`Website visible copy themes: ${website.visibleSummary}`);
       }
 
       if (website.phone) {

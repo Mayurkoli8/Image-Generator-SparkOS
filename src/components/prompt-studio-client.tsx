@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -15,15 +14,6 @@ type BrandSummary = {
   id: string;
   name: string;
   slug: string;
-};
-
-type TemplateSummary = {
-  id: string;
-  name: string;
-  slug: string;
-  campaignType: string;
-  description: string;
-  defaultCta: string | null;
 };
 
 type AssetSummary = {
@@ -47,20 +37,27 @@ type GenerationResult = {
   };
 };
 
+type SavedStudioSettings = {
+  brandId?: string;
+  campaignType?: string;
+  aspectRatio?: string;
+  prompt?: string;
+  selectedAssetIds?: string[];
+};
+
+const storageKey = "brandposter.promptStudio.v2";
+
 export function PromptStudioClient({
   brands,
-  templates,
   assets,
 }: {
   brands: BrandSummary[];
-  templates: TemplateSummary[];
   assets: AssetSummary[];
 }) {
   const [brandId, setBrandId] = useState(brands[0]?.id || "");
   const [campaignType, setCampaignType] = useState("new_year");
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [prompt, setPrompt] = useState("Create a premium New Year greeting post");
-  const [cta, setCta] = useState("Book a site visit");
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
@@ -79,13 +76,42 @@ export function PromptStudioClient({
   );
   const validSelectedAssetIds = useMemo(() => {
     const availableIds = new Set(referenceAssets.map((asset) => asset.id));
-    return selectedAssetIds.filter((id) => availableIds.has(id));
+    return selectedAssetIds.filter((id) => availableIds.has(id)).slice(0, 4);
   }, [referenceAssets, selectedAssetIds]);
-  const matchingTemplates = useMemo(
-    () => templates.filter((template) => template.campaignType === campaignType),
-    [templates, campaignType],
-  );
-  const selectedCount = validSelectedAssetIds.length;
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(storageKey);
+
+    if (!saved) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      try {
+        const parsed = JSON.parse(saved) as SavedStudioSettings;
+        setBrandId(parsed.brandId || brands[0]?.id || "");
+        setCampaignType(parsed.campaignType || "new_year");
+        setAspectRatio(parsed.aspectRatio || "1:1");
+        setPrompt(parsed.prompt || "Create a premium New Year greeting post");
+        setSelectedAssetIds(parsed.selectedAssetIds || []);
+      } catch {
+        window.localStorage.removeItem(storageKey);
+      }
+    }, 0);
+  }, [brands]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        brandId,
+        campaignType,
+        aspectRatio,
+        prompt,
+        selectedAssetIds: validSelectedAssetIds,
+      } satisfies SavedStudioSettings),
+    );
+  }, [aspectRatio, brandId, campaignType, prompt, validSelectedAssetIds]);
 
   async function generatePoster() {
     if (!brandId || !prompt.trim()) {
@@ -106,7 +132,6 @@ export function PromptStudioClient({
           aspectRatio,
           outputFormat: "png",
           referenceAssetIds: validSelectedAssetIds,
-          customTextFields: { cta },
         }),
       });
 
@@ -126,16 +151,16 @@ export function PromptStudioClient({
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+    <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
       <Card>
         <CardHeader>
-          <CardTitle>Brand-aware prompt studio</CardTitle>
+          <CardTitle>Create poster</CardTitle>
           <CardDescription>
-            The AI prompt is automatically enhanced with brand rules, real estate context, and layout guidance.
+            Choose a brand, write a simple prompt, select up to four references, and generate.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <label className="space-y-2 text-sm text-slate-300">
               Brand
               <Select
@@ -154,11 +179,21 @@ export function PromptStudioClient({
               </Select>
             </label>
             <label className="space-y-2 text-sm text-slate-300">
-              Campaign type
+              Campaign
               <Select value={campaignType} onChange={(e) => setCampaignType(e.target.value)}>
                 {campaignTypes.map((type) => (
                   <option key={type.value} value={type.value}>
                     {type.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="space-y-2 text-sm text-slate-300">
+              Format
+              <Select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
+                {aspectRatios.map((ratio) => (
+                  <option key={ratio.value} value={ratio.value}>
+                    {ratio.label}
                   </option>
                 ))}
               </Select>
@@ -170,41 +205,15 @@ export function PromptStudioClient({
             <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} />
           </label>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-2 text-sm text-slate-300">
-              Aspect ratio
-              <Select value={aspectRatio} onChange={(e) => setAspectRatio(e.target.value)}>
-                {aspectRatios.map((ratio) => (
-                  <option key={ratio.value} value={ratio.value}>
-                    {ratio.label}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="space-y-2 text-sm text-slate-300">
-              CTA overlay text
-              <Input value={cta} onChange={(e) => setCta(e.target.value)} />
-            </label>
-          </div>
-
-          <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-            <p className="text-sm font-medium text-white">Recommended template ideas</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {matchingTemplates.map((template) => (
-                <Badge key={template.id}>{template.name}</Badge>
-              ))}
-            </div>
-          </div>
-
           <div className="grid gap-3 rounded-2xl border border-white/8 bg-white/4 p-4 md:grid-cols-[minmax(0,1fr)_220px]">
             <div>
-              <p className="text-sm font-medium text-white">Exact logo overlay</p>
+              <p className="text-sm font-medium text-white">Logo overlay</p>
               {logoAsset ? (
                 <div className="mt-3 flex items-center gap-3">
                   <img src={logoAsset.publicUrl} alt={logoAsset.name} className="h-16 w-28 rounded-xl bg-white object-contain p-2" />
                   <div className="min-w-0">
                     <p className="truncate text-sm text-white">{logoAsset.name}</p>
-                    <p className="mt-1 text-xs text-slate-400">Placed after generation</p>
+                    <p className="mt-1 text-xs text-slate-400">Placed exactly after generation</p>
                   </div>
                 </div>
               ) : (
@@ -220,7 +229,7 @@ export function PromptStudioClient({
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-medium text-white">Reference images</p>
-              <Badge>{selectedCount} selected</Badge>
+              <Badge>{validSelectedAssetIds.length} selected</Badge>
             </div>
             {referenceAssets.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-white/4 p-4 text-sm text-slate-400">
@@ -230,21 +239,23 @@ export function PromptStudioClient({
               <div className="grid gap-3 md:grid-cols-2">
                 {referenceAssets.map((asset) => {
                   const checked = selectedAssetIds.includes(asset.id);
+                  const disabled = !checked && validSelectedAssetIds.length >= 4;
 
                   return (
                     <label
                       key={asset.id}
                       className={`flex cursor-pointer gap-3 rounded-2xl border p-3 transition ${
                         checked ? "border-amber-300/30 bg-amber-300/10" : "border-white/8 bg-white/4 hover:bg-white/6"
-                      }`}
+                      } ${disabled ? "opacity-55" : ""}`}
                     >
                       <input
                         type="checkbox"
                         checked={checked}
+                        disabled={disabled}
                         onChange={(e) => {
                           setSelectedAssetIds((current) =>
                             e.target.checked
-                              ? [...current, asset.id]
+                              ? [...current, asset.id].slice(0, 4)
                               : current.filter((id) => id !== asset.id),
                           );
                         }}
@@ -266,8 +277,8 @@ export function PromptStudioClient({
 
       <Card>
         <CardHeader>
-          <CardTitle>Generation preview</CardTitle>
-          <CardDescription>Preview the final result, then download or copy the hosted URL.</CardDescription>
+          <CardTitle>Preview</CardTitle>
+          <CardDescription>Open, download, or copy the generated poster URL.</CardDescription>
         </CardHeader>
         <CardContent>
           {result ? (
@@ -296,14 +307,10 @@ export function PromptStudioClient({
                   Copy hosted image URL
                 </button>
               </div>
-              <div className="rounded-2xl border border-white/8 bg-white/4 p-4">
-                <p className="text-sm font-medium text-white">Enhanced prompt used</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-400">{result.promptUsed}</p>
-              </div>
             </div>
           ) : (
             <div className="flex min-h-[540px] items-center justify-center rounded-3xl border border-dashed border-white/10 bg-white/4 p-8 text-center text-sm text-slate-400">
-              Your generated poster preview will appear here.
+              Your poster preview will appear here.
             </div>
           )}
         </CardContent>

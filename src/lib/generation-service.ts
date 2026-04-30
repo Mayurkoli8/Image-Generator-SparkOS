@@ -65,6 +65,14 @@ async function loadTemplate(campaignType: string): Promise<CampaignTemplate | nu
   });
 }
 
+function getCurrentDateTimeForPrompt() {
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "full",
+    timeStyle: "short",
+    timeZone: "Asia/Kolkata",
+  }).format(new Date());
+}
+
 export async function generatePoster(input: GeneratePosterInput): Promise<GenerationResponse> {
   const prisma = getPrisma();
   const brand = await findBrand(input.brandId);
@@ -114,14 +122,15 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     ...referenceAssets.map((asset) => asset.publicUrl),
     ...(input.referenceImageUrls || []),
   ];
+  const currentDateTime = getCurrentDateTimeForPrompt();
   const enhancedPrompt = buildEnhancedPrompt({
     brand,
     campaignType: input.campaignType,
     prompt: input.prompt,
     aspectRatio: input.aspectRatio,
     template,
-    customTextFields: input.customTextFields,
     brandResearch: brandResearch.promptContext,
+    currentDateTime,
   });
 
   const job = await prisma.generationJob.create({
@@ -134,7 +143,7 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
       campaignType: input.campaignType,
       aspectRatio: input.aspectRatio,
       outputFormat: input.outputFormat || "png",
-      quality: input.quality || "medium",
+      quality: input.quality || "high",
       status: "processing",
       metadata: JSON.stringify({
         referenceAssetIds: input.referenceAssetIds || [],
@@ -192,6 +201,7 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
   const fallbackReference = referenceAssets.find((asset) => asset.mimeType.startsWith("image/")) || null;
   const fallbackBuffer = providerBuffer || (await getStoredAssetBuffer(fallbackReference));
   const logoBuffer = await getStoredAssetBuffer(logoAsset);
+  const defaultCta = input.customTextFields?.cta?.trim() || brand.defaultCta || null;
 
   const poster = await composePoster({
     aspectRatio: input.aspectRatio,
@@ -205,8 +215,7 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     website: brand.website,
     socialHandle: brand.socialHandle,
     officeAddress: brand.officeAddress,
-    defaultCta:
-      input.customTextFields?.cta || template?.defaultCta || brand.defaultCta || "Book a site visit",
+    defaultCta,
     tagline: brand.tagline,
     logoBuffer,
     baseImageBuffer: fallbackBuffer,
@@ -233,8 +242,9 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
       phone: brand.phone,
       website: brand.website,
       socialHandle: brand.socialHandle,
-      cta: input.customTextFields?.cta || template?.defaultCta || brand.defaultCta || "Book a site visit",
+      cta: defaultCta,
     },
+    currentDateTime,
     outputSize: {
       width: poster.width,
       height: poster.height,
