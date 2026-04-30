@@ -4,4 +4,4 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@prisma/client", "sharp"],
 };
 
-export default nextConfig;
+export default nextConfig; 
