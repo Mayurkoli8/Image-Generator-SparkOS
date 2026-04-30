@@ -80,7 +80,7 @@ export function compactText(value: string, maxLength: number) {
     return normalized;
   }
 
-  return `${normalized.slice(0, maxLength - 1).trim()}…`;
+  return `${normalized.slice(0, Math.max(0, maxLength - 3)).trim()}...`;
 }
 
 export function getHeadlineFromPrompt(prompt: string, fallback: string) {

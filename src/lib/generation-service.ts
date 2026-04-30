@@ -3,6 +3,7 @@ import type { BrandAsset, CampaignTemplate } from "@prisma/client";
 import { getCampaignLabel } from "@/lib/campaigns";
 import { getPrisma } from "@/lib/prisma";
 import { safeJsonParse } from "@/lib/utils";
+import { scrapeBrandResearch } from "@/lib/brand-research";
 import { buildEnhancedPrompt } from "@/lib/prompt-builder";
 import { generateImageWithOpenAi } from "@/lib/openai-image-provider";
 import { composePoster } from "@/lib/poster-composer";
@@ -92,13 +93,22 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     }
   }
 
-  const template = await loadTemplate(input.campaignType);
+  const [template, brandResearch] = await Promise.all([
+    loadTemplate(input.campaignType),
+    scrapeBrandResearch({
+      brandName: brand.name,
+      website: brand.website,
+      socialHandle: brand.socialHandle,
+    }),
+  ]);
   const logoAsset =
     brand.assets.find((asset) => asset.id === brand.logoAssetId) ||
     brand.assets.find((asset) => asset.type === "logo") ||
     null;
   const referenceAssets = brand.assets.filter((asset) =>
-    (input.referenceAssetIds || []).includes(asset.id),
+    (input.referenceAssetIds || []).includes(asset.id) &&
+    asset.type !== "logo" &&
+    asset.mimeType.startsWith("image/"),
   );
   const referenceImageUrls = [
     ...referenceAssets.map((asset) => asset.publicUrl),
@@ -111,6 +121,7 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     aspectRatio: input.aspectRatio,
     template,
     customTextFields: input.customTextFields,
+    brandResearch: brandResearch.promptContext,
   });
 
   const job = await prisma.generationJob.create({
@@ -128,6 +139,8 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
       metadata: JSON.stringify({
         referenceAssetIds: input.referenceAssetIds || [],
         referenceImageUrls: input.referenceImageUrls || [],
+        brandResearchSources: brandResearch.sources,
+        brandResearchWarnings: brandResearch.warnings,
       }),
     },
   });
@@ -146,6 +159,7 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
   let providerMeta: Record<string, unknown> = {
     provider: "local-fallback",
     fallbackReason: "OpenAI generation not attempted.",
+    brandResearchSources: brandResearch.sources,
   };
 
   try {
@@ -161,13 +175,17 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
       provider: generated.provider,
       model: generated.model,
       usedReferences: generated.usedReferences,
+      brandResearchSources: brandResearch.sources,
+      brandResearchWarnings: brandResearch.warnings,
     };
   } catch (error) {
     providerMeta = {
       provider: "local-fallback",
       fallbackReason: error instanceof Error ? error.message : "Unknown generation error.",
-      referenceAssetIds: input.referenceAssetIds || [],
+      referenceAssetIds: referenceAssets.map((asset) => asset.id),
       referenceImageUrls: input.referenceImageUrls || [],
+      brandResearchSources: brandResearch.sources,
+      brandResearchWarnings: brandResearch.warnings,
     };
   }
 

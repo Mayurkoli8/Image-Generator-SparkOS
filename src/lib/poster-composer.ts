@@ -54,18 +54,13 @@ function createFallbackSvg(options: ComposePosterInput, width: number, height: n
 }
 
 function createOverlaySvg(options: ComposePosterInput, width: number, height: number) {
-  const footerText = [
-    options.phone,
-    options.website,
-    options.socialHandle,
-    options.officeAddress,
-  ]
+  const footerText = [options.phone, options.website, options.socialHandle]
     .filter(Boolean)
-    .join("   •   ");
-
+    .join(" | ");
   const cta = escapeXml(compactText(options.defaultCta || "Book a site visit", 28));
   const brandName = escapeXml(options.brandName);
-  const footer = escapeXml(compactText(footerText || "Premium real estate brand", 120));
+  const footer = escapeXml(compactText(footerText || "Premium real estate brand", 72));
+  const address = escapeXml(compactText(options.officeAddress || options.tagline || "", 78));
 
   return Buffer.from(
     `
@@ -79,7 +74,8 @@ function createOverlaySvg(options: ComposePosterInput, width: number, height: nu
         <rect width="${width}" height="${height}" fill="url(#fade)" />
         <rect x="${width * 0.06}" y="${height * 0.81}" width="${width * 0.88}" height="${height * 0.12}" rx="22" fill="rgba(9,14,22,0.8)" stroke="rgba(255,255,255,0.1)" />
         <text x="${width * 0.09}" y="${height * 0.856}" font-size="${Math.round(width * 0.024)}" fill="${options.secondaryColor}" font-weight="700" font-family="Inter, Arial, sans-serif">${brandName}</text>
-        <text x="${width * 0.09}" y="${height * 0.892}" font-size="${Math.round(width * 0.017)}" fill="rgba(255,255,255,0.82)" font-family="Inter, Arial, sans-serif">${footer}</text>
+        <text x="${width * 0.09}" y="${height * 0.89}" font-size="${Math.round(width * 0.016)}" fill="rgba(255,255,255,0.84)" font-family="Inter, Arial, sans-serif">${footer}</text>
+        <text x="${width * 0.09}" y="${height * 0.915}" font-size="${Math.round(width * 0.014)}" fill="rgba(255,255,255,0.66)" font-family="Inter, Arial, sans-serif">${address}</text>
         <rect x="${width * 0.72}" y="${height * 0.835}" width="${width * 0.18}" height="${height * 0.05}" rx="999" fill="${options.secondaryColor}" />
         <text x="${width * 0.81}" y="${height * 0.868}" text-anchor="middle" font-size="${Math.round(width * 0.018)}" fill="${options.primaryColor}" font-weight="700" font-family="Inter, Arial, sans-serif">${cta}</text>
       </svg>
@@ -105,32 +101,36 @@ export async function composePoster(options: ComposePosterInput) {
   ];
 
   if (options.logoBuffer) {
+    const logoCardWidth = Math.round(width * 0.24);
+    const logoCardHeight = Math.round(height * 0.105);
+    const logoPadding = Math.round(Math.min(logoCardWidth, logoCardHeight) * 0.14);
     const logo = await sharp(options.logoBuffer)
-      .resize({ width: Math.round(width * 0.17), height: Math.round(height * 0.09), fit: "contain" })
+      .resize({
+        width: logoCardWidth - logoPadding * 2,
+        height: logoCardHeight - logoPadding * 2,
+        fit: "contain",
+      })
       .png()
       .toBuffer();
 
     composites.push({
       input: await sharp({
         create: {
-          width: Math.round(width * 0.22),
-          height: Math.round(height * 0.11),
+          width: logoCardWidth,
+          height: logoCardHeight,
           channels: 4,
-          background: { r: 255, g: 255, b: 255, alpha: 0.94 },
+          background: { r: 255, g: 255, b: 255, alpha: 0.98 },
         },
       })
         .composite([{ input: logo, gravity: "center" }])
         .png()
         .toBuffer(),
-      top: Math.round(height * 0.05),
+      top: Math.round(height * 0.045),
       left: Math.round(width * 0.06),
     });
   }
 
-  const final = await base
-    .composite(composites)
-    .png()
-    .toBuffer();
+  const final = await base.composite(composites).png().toBuffer();
 
   const thumbnail = await sharp(final).resize(480).webp({ quality: 86 }).toBuffer();
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Globe2, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +27,17 @@ type BrandRecord = {
   logoAssetId: string | null;
 };
 
+type ResearchResult = {
+  promptContext: string | null;
+  suggestions: {
+    tagline?: string;
+    phone?: string;
+    officeAddress?: string;
+    instagramHandle?: string;
+  };
+  warnings: string[];
+};
+
 const emptyBrand: BrandRecord = {
   id: "",
   slug: "",
@@ -49,6 +60,8 @@ export function BrandSettingsClient({ initialBrands }: { initialBrands: BrandRec
   const [brands, setBrands] = useState(initialBrands);
   const [selectedId, setSelectedId] = useState(initialBrands[0]?.id || "new");
   const [form, setForm] = useState<BrandRecord>(initialBrands[0] || emptyBrand);
+  const [researching, setResearching] = useState(false);
+  const [researchNote, setResearchNote] = useState<string | null>(null);
   const selectedBrand = useMemo(
     () => brands.find((brand) => brand.id === selectedId) || (selectedId === "new" ? emptyBrand : brands[0] || emptyBrand),
     [brands, selectedId],
@@ -83,10 +96,60 @@ export function BrandSettingsClient({ initialBrands }: { initialBrands: BrandRec
     setBrands(nextBrands);
     setSelectedId(saved.id);
     setForm(saved);
+    setResearchNote(null);
     toast.success("Brand saved.");
   }
 
+  async function scanBrandPresence() {
+    if (!form.website?.trim() && !form.socialHandle?.trim()) {
+      toast.error("Add a website or Instagram handle first.");
+      return;
+    }
+
+    setResearching(true);
+    setResearchNote(null);
+
+    try {
+      const response = await fetch("/api/brand-research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandName: form.name,
+          website: form.website,
+          socialHandle: form.socialHandle,
+        }),
+      });
+      const data = (await response.json()) as ResearchResult;
+
+      if (!response.ok) {
+        throw new Error("Unable to scan brand sources.");
+      }
+
+      setForm((current) => ({
+        ...current,
+        tagline: current.tagline || data.suggestions.tagline || current.tagline,
+        phone: current.phone || data.suggestions.phone || current.phone,
+        officeAddress: current.officeAddress || data.suggestions.officeAddress || current.officeAddress,
+        socialHandle: current.socialHandle || data.suggestions.instagramHandle || current.socialHandle,
+      }));
+      setResearchNote(
+        data.promptContext
+          ? "Website/social scan found public brand context."
+          : data.warnings[0] || "No public brand context found.",
+      );
+      toast.success("Brand scan complete.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Brand scan failed.";
+      setResearchNote(message);
+      toast.error(message);
+    } finally {
+      setResearching(false);
+    }
+  }
+
   function chooseBrand(id: string) {
+    setResearchNote(null);
+
     if (id === "new") {
       setSelectedId("new");
       setForm(emptyBrand);
@@ -154,28 +217,36 @@ export function BrandSettingsClient({ initialBrands }: { initialBrands: BrandRec
             <Input value={form.website || ""} onChange={(e) => setForm({ ...form, website: e.target.value })} />
           </label>
           <label className="space-y-2 text-sm text-slate-300">
-            Contact number
-            <Input value={form.phone || ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          </label>
-          <label className="space-y-2 text-sm text-slate-300 md:col-span-2">
-            Office address
-            <Input
-              value={form.officeAddress || ""}
-              onChange={(e) => setForm({ ...form, officeAddress: e.target.value })}
-            />
-          </label>
-          <label className="space-y-2 text-sm text-slate-300">
             Social handle
             <Input
               value={form.socialHandle || ""}
               onChange={(e) => setForm({ ...form, socialHandle: e.target.value })}
+              placeholder="@brand or Instagram URL"
             />
+          </label>
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/8 bg-white/4 p-3 md:col-span-2">
+            <Button type="button" variant="secondary" onClick={scanBrandPresence} disabled={researching}>
+              {researching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe2 className="h-4 w-4" />}
+              {researching ? "Scanning..." : "Scan website/social"}
+            </Button>
+            {researchNote ? <p className="text-sm text-slate-400">{researchNote}</p> : null}
+          </div>
+          <label className="space-y-2 text-sm text-slate-300">
+            Contact number
+            <Input value={form.phone || ""} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </label>
           <label className="space-y-2 text-sm text-slate-300">
             Default CTA
             <Input
               value={form.defaultCta || ""}
               onChange={(e) => setForm({ ...form, defaultCta: e.target.value })}
+            />
+          </label>
+          <label className="space-y-2 text-sm text-slate-300 md:col-span-2">
+            Office address
+            <Input
+              value={form.officeAddress || ""}
+              onChange={(e) => setForm({ ...form, officeAddress: e.target.value })}
             />
           </label>
           <label className="space-y-2 text-sm text-slate-300 md:col-span-2">
@@ -206,7 +277,7 @@ export function BrandSettingsClient({ initialBrands }: { initialBrands: BrandRec
               placeholder="Example: Use premium real estate imagery, strong contrast, and clear footer contact details."
             />
           </label>
-          <div className="md:col-span-2 flex justify-end">
+          <div className="flex justify-end md:col-span-2">
             <Button onClick={submitBrand}>{form.id ? "Save changes" : "Create brand"}</Button>
           </div>
         </CardContent>

@@ -24,11 +24,11 @@ export function getOpenAiApiKey() {
 }
 
 export function getOpenAiImageModel() {
-  return process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-1";
+  return process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-2";
 }
 
 export function getOpenAiImageQuality() {
-  return process.env.OPENAI_IMAGE_QUALITY?.trim() || "medium";
+  return process.env.OPENAI_IMAGE_QUALITY?.trim() || "high";
 }
 
 export function getWebhookSecret() {

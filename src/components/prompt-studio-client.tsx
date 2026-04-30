@@ -41,6 +41,10 @@ type GenerationResult = {
   thumbnailUrl: string;
   promptUsed: string;
   createdAt: string;
+  metadata?: {
+    provider?: string;
+    fallbackReason?: string;
+  };
 };
 
 export function PromptStudioClient({
@@ -61,14 +65,27 @@ export function PromptStudioClient({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
 
-  const brandAssets = useMemo(
+  const brandImageAssets = useMemo(
     () => assets.filter((asset) => asset.brandId === brandId && asset.mimeType.startsWith("image/")),
     [assets, brandId],
   );
+  const logoAsset = useMemo(
+    () => brandImageAssets.find((asset) => asset.type === "logo") || null,
+    [brandImageAssets],
+  );
+  const referenceAssets = useMemo(
+    () => brandImageAssets.filter((asset) => asset.type !== "logo"),
+    [brandImageAssets],
+  );
+  const validSelectedAssetIds = useMemo(() => {
+    const availableIds = new Set(referenceAssets.map((asset) => asset.id));
+    return selectedAssetIds.filter((id) => availableIds.has(id));
+  }, [referenceAssets, selectedAssetIds]);
   const matchingTemplates = useMemo(
     () => templates.filter((template) => template.campaignType === campaignType),
     [templates, campaignType],
   );
+  const selectedCount = validSelectedAssetIds.length;
 
   async function generatePoster() {
     if (!brandId || !prompt.trim()) {
@@ -88,7 +105,7 @@ export function PromptStudioClient({
           campaignType,
           aspectRatio,
           outputFormat: "png",
-          referenceAssetIds: selectedAssetIds,
+          referenceAssetIds: validSelectedAssetIds,
           customTextFields: { cta },
         }),
       });
@@ -121,7 +138,13 @@ export function PromptStudioClient({
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-2 text-sm text-slate-300">
               Brand
-              <Select value={brandId} onChange={(e) => setBrandId(e.target.value)}>
+              <Select
+                value={brandId}
+                onChange={(e) => {
+                  setBrandId(e.target.value);
+                  setSelectedAssetIds([]);
+                }}
+              >
                 <option value="">Select a brand</option>
                 {brands.map((brand) => (
                   <option key={brand.id} value={brand.id}>
@@ -173,22 +196,46 @@ export function PromptStudioClient({
             </div>
           </div>
 
+          <div className="grid gap-3 rounded-2xl border border-white/8 bg-white/4 p-4 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div>
+              <p className="text-sm font-medium text-white">Exact logo overlay</p>
+              {logoAsset ? (
+                <div className="mt-3 flex items-center gap-3">
+                  <img src={logoAsset.publicUrl} alt={logoAsset.name} className="h-16 w-28 rounded-xl bg-white object-contain p-2" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm text-white">{logoAsset.name}</p>
+                    <p className="mt-1 text-xs text-slate-400">Placed after generation</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-400">No logo uploaded for this brand.</p>
+              )}
+            </div>
+            <Button onClick={generatePoster} className="h-12 self-end" disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {loading ? "Generating..." : "Generate image"}
+            </Button>
+          </div>
+
           <div className="space-y-3">
-            <p className="text-sm font-medium text-white">Reference images</p>
-            {brandAssets.length === 0 ? (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-medium text-white">Reference images</p>
+              <Badge>{selectedCount} selected</Badge>
+            </div>
+            {referenceAssets.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-white/4 p-4 text-sm text-slate-400">
-                No image assets uploaded for this brand yet.
+                No reference images uploaded for this brand yet.
               </div>
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
-                {brandAssets.map((asset) => {
+                {referenceAssets.map((asset) => {
                   const checked = selectedAssetIds.includes(asset.id);
 
                   return (
                     <label
                       key={asset.id}
-                      className={`flex cursor-pointer gap-3 rounded-2xl border p-3 ${
-                        checked ? "border-amber-300/30 bg-amber-300/10" : "border-white/8 bg-white/4"
+                      className={`flex cursor-pointer gap-3 rounded-2xl border p-3 transition ${
+                        checked ? "border-amber-300/30 bg-amber-300/10" : "border-white/8 bg-white/4 hover:bg-white/6"
                       }`}
                     >
                       <input
@@ -214,11 +261,6 @@ export function PromptStudioClient({
               </div>
             )}
           </div>
-
-          <Button onClick={generatePoster} className="w-full" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {loading ? "Generating poster..." : "Generate poster"}
-          </Button>
         </CardContent>
       </Card>
 
@@ -231,6 +273,12 @@ export function PromptStudioClient({
           {result ? (
             <div className="space-y-4">
               <img src={result.imageUrl} alt="Generated poster" className="w-full rounded-3xl border border-white/10" />
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge>{result.metadata?.provider === "openai" ? "OpenAI image" : "Fallback image"}</Badge>
+                {result.metadata?.fallbackReason ? (
+                  <span className="text-xs text-slate-400">{result.metadata.fallbackReason}</span>
+                ) : null}
+              </div>
               <div className="grid gap-3">
                 <a href={result.imageUrl} target="_blank" rel="noreferrer" className="text-sm text-amber-300">
                   Open full image

@@ -8,6 +8,7 @@ type PromptOptions = {
   aspectRatio: string;
   template: CampaignTemplate | null;
   customTextFields?: Record<string, string>;
+  brandResearch?: string | null;
 };
 
 export function buildEnhancedPrompt(options: PromptOptions) {
@@ -28,6 +29,7 @@ export function buildEnhancedPrompt(options: PromptOptions) {
       options.brand.designRules ||
       "Keep the composition premium, uncluttered, aspirational, and social-media ready."
     }.`,
+    options.brandResearch ? `Website and social research context:\n${options.brandResearch}` : null,
     `Layout rules: ${
       options.template?.layoutGuidance ||
       "Keep safe space for the logo, strong footer details, and a clear CTA band."
@@ -35,8 +37,9 @@ export function buildEnhancedPrompt(options: PromptOptions) {
     `Output format: ${options.aspectRatio} social media poster, high-end Instagram-ready composition.`,
     "Use a modern luxury layout, strong visual hierarchy, clean spacing, high contrast, and realistic aspirational property imagery.",
     "Leave clear safe space in the top-left area for a logo overlay and in the bottom area for contact details and CTA overlay.",
-    "Do not attempt to render exact phone numbers, websites, handles, addresses, or tiny legal text. Use visual placeholder spacing only; exact mandatory brand text will be added later by code.",
-  ];
+    "Do not draw, invent, imitate, approximate, or place the brand logo. The exact uploaded transparent logo will be composited later on a clean white logo plate.",
+    "Do not render readable phone numbers, websites, handles, addresses, CTA text, years, dates, or tiny legal text. Use visual placeholder spacing only; exact mandatory brand text will be added later by code.",
+  ].filter((line): line is string => Boolean(line));
 
   if (options.customTextFields && Object.keys(options.customTextFields).length > 0) {
     const textFields = Object.entries(options.customTextFields)
