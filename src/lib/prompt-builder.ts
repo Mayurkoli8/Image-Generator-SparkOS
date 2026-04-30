@@ -11,25 +11,57 @@ type PromptOptions = {
   currentDateTime?: string;
 };
 
-export function buildEnhancedPrompt(options: PromptOptions) {
+type PromptWithBrandInfo = PromptOptions & {
+  logoName?: string;
+  headline?: string;
+  contactDetails?: {
+    phone?: string;
+    website?: string;
+    socialHandle?: string;
+    officeAddress?: string;
+  };
+  cta?: string;
+};
+
+export function buildEnhancedPrompt(options: PromptOptions | PromptWithBrandInfo) {
+  const brandInfo = options as PromptWithBrandInfo;
+  const contactParts = [
+    brandInfo.contactDetails?.phone,
+    brandInfo.contactDetails?.website,
+    brandInfo.contactDetails?.socialHandle,
+    brandInfo.contactDetails?.officeAddress,
+  ].filter(Boolean);
+  
   const lines = [
-    "Create the background image for a premium real estate social poster.",
+    "Create a complete, professional premium real estate social media poster.",
     `Current date and time: ${options.currentDateTime || new Date().toISOString()}.`,
     `Brand: ${options.brand.name}.`,
     `Campaign: ${getCampaignLabel(options.campaignType)}.`,
     `User prompt: ${options.prompt}.`,
     options.template?.promptScaffold ? `Creative direction: ${options.template.promptScaffold}` : null,
     `Brand personality: ${options.brand.tagline || `${options.brand.name} real estate brand`}.`,
-    `Brand colors to subtly support: ${options.brand.primaryColor}, ${options.brand.secondaryColor}, ${options.brand.accentColor}.`,
+    `Brand colors to use prominently: ${options.brand.primaryColor}, ${options.brand.secondaryColor}, ${options.brand.accentColor}.`,
     options.brand.designRules ? `Brand style notes: ${options.brand.designRules}.` : null,
     options.brandResearch ? `Public website/social context:\n${options.brandResearch}` : null,
-    `Format: ${options.aspectRatio} poster background, crisp high-resolution photorealistic real estate imagery.`,
-    "Use uploaded reference images only for visual style, property mood, angle, materials, lighting, and realism.",
-    "Do not copy or redraw logos, brand marks, watermarks, captions, UI, borders, poster text, or typography from any reference image.",
-    "Do not render any readable words, letters, numbers, dates, phone numbers, URLs, social handles, CTA text, signage, watermark, or logo in the image.",
-    "Leave natural clean space near the top-left for an exact logo overlay and near the bottom for exact contact details.",
-    "The final logo, headline, contact details, and CTA will be added later by code, so the generated image must stay text-free.",
-    "Prioritize realistic luxury interiors/exteriors, natural lighting, sharp details, correct perspective, and believable materials.",
+    `Format: ${options.aspectRatio} poster, crisp high-resolution photorealistic real estate imagery with integrated text and branding.`,
+    
+    "POSTER LAYOUT & COMPOSITION:",
+    "- Top-left corner: Place the exact brand logo (with clean white background card if needed)",
+    brandInfo.headline ? `- Main headline (centered top area): "${brandInfo.headline}"` : "- Include a compelling main headline in the top-center area",
+    brandInfo.headline ? `- Subheadline: "${options.brand.tagline || 'Premium Real Estate'}"` : null,
+    "- Bottom footer: Semi-transparent dark bar with brand information and contact details",
+    brandInfo.contactDetails ? `- Contact details in footer: ${contactParts.join(" | ")}` : null,
+    brandInfo.cta ? `- Call-to-action button/text in footer: "${brandInfo.cta}"` : null,
+    
+    "DESIGN REQUIREMENTS:",
+    "- Background must be stunning real estate imagery (luxury interiors/exteriors, natural lighting)",
+    "- Text must be clearly readable with excellent contrast and professional typography",
+    "- Logo should be perfectly integrated in top-left with professional spacing",
+    "- Use brand colors in footer bar and accents throughout",
+    "- Maintain premium, sophisticated aesthetic appropriate for luxury real estate",
+    "- All text must be sharp, legible, and properly positioned for social media",
+    "- Generate this as a complete, ready-to-post image - no post-processing needed",
+    "Prioritize realistic luxury property showcase, natural lighting, sharp details, correct perspective, and premium materials.",
   ].filter((line): line is string => Boolean(line));
 
   return lines.join("\n");

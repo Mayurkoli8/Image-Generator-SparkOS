@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import sharp from "sharp";
 import type { BrandAsset, CampaignTemplate } from "@prisma/client";
 import { getCampaignLabel } from "@/lib/campaigns";
 import { getPrisma } from "@/lib/prisma";
@@ -6,7 +7,6 @@ import { safeJsonParse } from "@/lib/utils";
 import { scrapeBrandResearch } from "@/lib/brand-research";
 import { buildEnhancedPrompt } from "@/lib/prompt-builder";
 import { generateImageWithOpenAi } from "@/lib/openai-image-provider";
-import { composePoster } from "@/lib/poster-composer";
 import { readStoredFile, saveBufferToStorage } from "@/lib/storage";
 
 type GeneratePosterInput = {
@@ -113,16 +113,24 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     brand.assets.find((asset) => asset.id === brand.logoAssetId) ||
     brand.assets.find((asset) => asset.type === "logo") ||
     null;
-  const referenceAssets = brand.assets.filter((asset) =>
-    (input.referenceAssetIds || []).includes(asset.id) &&
-    asset.type !== "logo" &&
-    asset.mimeType.startsWith("image/"),
-  );
-  const referenceImageUrls = [
-    ...referenceAssets.map((asset) => asset.publicUrl),
-    ...(input.referenceImageUrls || []),
-  ];
   const currentDateTime = getCurrentDateTimeForPrompt();
+  const defaultCta = input.customTextFields?.cta?.trim() || brand.defaultCta || null;
+  
+  // Get headline from campaign type
+  const headlineMap: Record<string, string> = {
+    new_year: "Happy New Year",
+    festival_greeting: "Festive Greetings",
+    property_launch: "Now Launching",
+    offer_promotion: "Limited Offer",
+    site_visit_invitation: "Site Visit Invitation",
+    possession_update: "Possession Update",
+    milestone_announcement: "Milestone Achieved",
+    project_highlight: "Project Highlight",
+    construction_progress: "Construction Update",
+    testimonial: "Homeowner Story",
+  };
+  const headline = headlineMap[input.campaignType] || "Premium Real Estate";
+  
   const enhancedPrompt = buildEnhancedPrompt({
     brand,
     campaignType: input.campaignType,
@@ -131,6 +139,15 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     template,
     brandResearch: brandResearch.promptContext,
     currentDateTime,
+    logoName: logoAsset?.fileName || `${brand.name} Logo`,
+    headline,
+    contactDetails: {
+      phone: brand.phone || undefined,
+      website: brand.website || undefined,
+      socialHandle: brand.socialHandle || undefined,
+      officeAddress: brand.officeAddress || undefined,
+    },
+    cta: defaultCta || undefined,
   });
 
   const job = await prisma.generationJob.create({
@@ -146,8 +163,6 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
       quality: input.quality || "high",
       status: "processing",
       metadata: JSON.stringify({
-        referenceAssetIds: input.referenceAssetIds || [],
-        referenceImageUrls: input.referenceImageUrls || [],
         brandResearchSources: brandResearch.sources,
         brandResearchWarnings: brandResearch.warnings,
       }),
@@ -176,14 +191,12 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
       prompt: enhancedPrompt,
       aspectRatio: input.aspectRatio,
       outputFormat: input.outputFormat || "png",
-      referenceImageUrls,
     });
 
     providerBuffer = generated.buffer;
     providerMeta = {
       provider: generated.provider,
       model: generated.model,
-      usedReferences: generated.usedReferences,
       brandResearchSources: brandResearch.sources,
       brandResearchWarnings: brandResearch.warnings,
     };
@@ -191,45 +204,31 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     providerMeta = {
       provider: "local-fallback",
       fallbackReason: error instanceof Error ? error.message : "Unknown generation error.",
-      referenceAssetIds: referenceAssets.map((asset) => asset.id),
-      referenceImageUrls: input.referenceImageUrls || [],
       brandResearchSources: brandResearch.sources,
       brandResearchWarnings: brandResearch.warnings,
     };
   }
 
-  const fallbackReference = referenceAssets.find((asset) => asset.mimeType.startsWith("image/")) || null;
-  const fallbackBuffer = providerBuffer || (await getStoredAssetBuffer(fallbackReference));
-  const logoBuffer = await getStoredAssetBuffer(logoAsset);
-  const defaultCta = input.customTextFields?.cta?.trim() || brand.defaultCta || null;
+  if (!providerBuffer) {
+    throw new Error("Failed to generate image from OpenAI and no fallback available.");
+  }
 
-  const poster = await composePoster({
-    aspectRatio: input.aspectRatio,
-    brandName: brand.name,
-    campaignType: input.campaignType,
-    prompt: input.prompt,
-    primaryColor: brand.primaryColor,
-    secondaryColor: brand.secondaryColor,
-    accentColor: brand.accentColor,
-    phone: brand.phone,
-    website: brand.website,
-    socialHandle: brand.socialHandle,
-    officeAddress: brand.officeAddress,
-    defaultCta,
-    tagline: brand.tagline,
-    logoBuffer,
-    baseImageBuffer: fallbackBuffer,
-  });
+  // Use the generated image directly without post-processing
+  const finalImage = providerBuffer;
+  const thumbnail = await sharp(finalImage)
+    .resize(480, 480, { fit: "cover", position: "center" })
+    .webp({ quality: 88 })
+    .toBuffer();
 
   const finalFile = saveBufferToStorage({
-    buffer: poster.final,
+    buffer: finalImage,
     mimeType: "image/png",
     fileName: `${brand.slug}-${nanoid(6)}.png`,
     folder: `generated/${brand.slug}`,
   });
 
   const thumbFile = saveBufferToStorage({
-    buffer: poster.thumbnail,
+    buffer: thumbnail,
     mimeType: "image/webp",
     fileName: `${brand.slug}-${nanoid(6)}.webp`,
     folder: `generated/${brand.slug}/thumbs`,
@@ -238,17 +237,8 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
   const metadata = {
     ...providerMeta,
     campaignLabel: getCampaignLabel(input.campaignType),
-    overlay: {
-      phone: brand.phone,
-      website: brand.website,
-      socialHandle: brand.socialHandle,
-      cta: defaultCta,
-    },
     currentDateTime,
-    outputSize: {
-      width: poster.width,
-      height: poster.height,
-    },
+    generationMethod: "direct-openai-composition",
   };
 
   const updated = await prisma.generationJob.update({

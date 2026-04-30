@@ -38,23 +38,10 @@ function getOpenAiFormat(format: string): OpenAiImageFormat {
   return ["png", "jpeg", "webp"].includes(format) ? (format as OpenAiImageFormat) : "png";
 }
 
-async function fetchRemoteFile(url: string, index: number) {
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch reference image: ${url}`);
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const contentType = response.headers.get("content-type") || "image/png";
-  return new File([arrayBuffer], `reference-${index}.png`, { type: contentType });
-}
-
 export async function generateImageWithOpenAi(options: {
   prompt: string;
   aspectRatio: string;
   outputFormat: string;
-  referenceImageUrls: string[];
 }) {
   const apiKey = getOpenAiApiKey();
 
@@ -68,28 +55,13 @@ export async function generateImageWithOpenAi(options: {
   const quality = getOpenAiQuality(getOpenAiImageQuality());
   const safeFormat = getOpenAiFormat(options.outputFormat);
 
-  let response: ImagesResponse;
-  const usedReferences = options.referenceImageUrls.slice(0, 4);
-
-  if (usedReferences.length > 0) {
-    const files = await Promise.all(usedReferences.map((url, index) => fetchRemoteFile(url, index)));
-    response = await client.images.edit({
-      model,
-      prompt: options.prompt,
-      image: files,
-      size,
-      quality,
-      output_format: safeFormat,
-    });
-  } else {
-    response = await client.images.generate({
-      model,
-      prompt: options.prompt,
-      size,
-      quality,
-      output_format: safeFormat,
-    });
-  }
+  const response = await client.images.generate({
+    model,
+    prompt: options.prompt,
+    size,
+    quality,
+    output_format: safeFormat,
+  });
 
   const imageData = response?.data?.[0]?.b64_json;
 
@@ -102,6 +74,6 @@ export async function generateImageWithOpenAi(options: {
     mimeType: safeFormat === "jpeg" ? "image/jpeg" : "image/png",
     model,
     provider: "openai",
-    usedReferences,
+    usedReferences: [],
   } satisfies ProviderResult;
 }
