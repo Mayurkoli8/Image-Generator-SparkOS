@@ -113,6 +113,18 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     brand.assets.find((asset) => asset.id === brand.logoAssetId) ||
     brand.assets.find((asset) => asset.type === "logo") ||
     null;
+  
+  // Collect reference assets for visual style
+  const referenceAssets = brand.assets.filter((asset) =>
+    (input.referenceAssetIds || []).includes(asset.id) &&
+    asset.type !== "logo" &&
+    asset.mimeType.startsWith("image/"),
+  );
+  const referenceImageUrls = [
+    ...referenceAssets.map((asset) => asset.publicUrl),
+    ...(input.referenceImageUrls || []),
+  ];
+  
   const currentDateTime = getCurrentDateTimeForPrompt();
   const defaultCta = input.customTextFields?.cta?.trim() || brand.defaultCta || null;
   
@@ -163,6 +175,8 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
       quality: input.quality || "high",
       status: "processing",
       metadata: JSON.stringify({
+        referenceAssetIds: input.referenceAssetIds || [],
+        referenceImageUrls: referenceImageUrls.slice(0, 4),
         brandResearchSources: brandResearch.sources,
         brandResearchWarnings: brandResearch.warnings,
       }),
@@ -187,16 +201,22 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
   };
 
   try {
+    // Load logo buffer for OpenAI
+    const logoBuffer = await getStoredAssetBuffer(logoAsset);
+    
     const generated = await generateImageWithOpenAi({
       prompt: enhancedPrompt,
       aspectRatio: input.aspectRatio,
       outputFormat: input.outputFormat || "png",
+      logoBuffer: logoBuffer || undefined,
+      referenceImageUrls: referenceImageUrls.slice(0, 4),
     });
 
     providerBuffer = generated.buffer;
     providerMeta = {
       provider: generated.provider,
       model: generated.model,
+      usedReferences: generated.usedReferences,
       brandResearchSources: brandResearch.sources,
       brandResearchWarnings: brandResearch.warnings,
     };
@@ -204,6 +224,8 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     providerMeta = {
       provider: "local-fallback",
       fallbackReason: error instanceof Error ? error.message : "Unknown generation error.",
+      referenceAssetIds: referenceAssets.map((asset) => asset.id),
+      referenceImageUrls: referenceImageUrls.slice(0, 4),
       brandResearchSources: brandResearch.sources,
       brandResearchWarnings: brandResearch.warnings,
     };
