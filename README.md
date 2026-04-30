@@ -1,74 +1,96 @@
 # BrandPoster AI
 
-BrandPoster AI is a production-ready Next.js app for real estate marketing teams. It stores brand kits and assets, enhances rough prompts into brand-aware campaign prompts, generates poster visuals with OpenAI image models, overlays exact logo/contact/CTA elements with code, stores the final image, and returns hosted URLs to the browser or n8n.
+BrandPoster AI is a single Next.js app for real estate companies that need a simple brand-controlled poster studio.
 
-## What It Includes
+It lets your team:
+- create brand profiles
+- upload logos, posters, apartment photos, PDFs, DOCX, and text files
+- generate social media posters from prompts
+- preview and download the final image
+- copy a hosted image URL
+- trigger poster generation from n8n with a webhook
 
-- Dashboard, Brand Settings, Asset Upload, Prompt Studio, Generation Preview, History, Webhook Settings, and Template Library pages
-- Next.js App Router, TypeScript, Tailwind CSS, shadcn/ui, Prisma, SQLite, OpenAI SDK, Sharp image compositing
-- Local persistent file storage through `/api/files/...`, ready for Render persistent disk
-- Prisma models for `Brand`, `BrandAsset`, `CampaignTemplate`, `GenerationJob`, `WebhookRequest`, and `PromptHistory`
-- n8n webhook endpoint at `POST /api/webhook/generate-poster`
-- Idempotent webhook requests via `requestId`
-- Prompt templates for festival, New Year, launch, offer, site visit, possession, milestone, awareness, testimonial, project highlight, and construction progress posts
-- Fallback poster generation when `OPENAI_API_KEY` is missing or image generation fails
+The app is already structured for Render deployment.
 
-## Folder Structure
+## Tomorrow Deploy Steps
+
+If you want the shortest path:
+
+1. Push this repo to GitHub.
+2. Create a Render Web Service from the repo.
+3. Let Render use the included `render.yaml`.
+4. In Render Environment, set:
+   - `OPENAI_API_KEY`
+   - `PUBLIC_APP_URL`
+5. Deploy.
+
+Example:
+
+```txt
+PUBLIC_APP_URL=https://your-app-name.onrender.com
+```
+
+That is the main setup you need.
+
+## Important Notes
+
+- If `OPENAI_API_KEY` is missing, the app still works and creates a branded fallback poster.
+- Exact phone number, website, social handle, and CTA are added by code after generation so the final poster stays consistent.
+- The webhook endpoint is:
+
+```txt
+POST /api/webhook/generate-poster
+```
+
+## Main Pages
+
+- `/` Dashboard
+- `/brand-settings`
+- `/assets`
+- `/prompt-studio`
+- `/history`
+- `/webhook-settings`
+- `/templates`
+
+## Stack
+
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- Prisma + SQLite
+- OpenAI SDK
+- Sharp
+
+## Project Structure
 
 ```txt
 prisma/
-  schema.prisma                 Database models
-  seed.ts                       Sample brand and campaign templates
-  migrations/                   SQLite migration
-src/app/
-  (studio)/                     Product UI pages
-  api/                          Next.js route handlers
-src/components/
-  ui/                           shadcn/ui components
-  *-client.tsx                  Interactive product workflows
-src/lib/
-  generation-service.ts         End-to-end generation orchestration
-  openai-image-provider.ts      Swappable OpenAI image provider
-  poster-compositor.ts          Sharp overlay and thumbnail logic
-  storage.ts                    Swappable storage adapter
-  prompt-builder.ts             Brand-aware prompt enhancement
-  validation.ts                 Zod input schemas
-render.yaml                     Render blueprint
+  schema.prisma
+  seed.ts
+  migrations/
+
+scripts/
+  prepare-runtime-env.mjs
+
+src/
+  app/
+    (dashboard)/
+    api/
+  components/
+    ui/
+  lib/
+
+render.yaml
 ```
-
-## Fast Deploy For You
-
-If you only care about getting it live on Render:
-
-1. Push the repo to GitHub.
-2. Create a new Render Web Service from that repo.
-3. Use the repo's `render.yaml` when Render asks.
-4. Add `OPENAI_API_KEY`.
-5. Add `PUBLIC_APP_URL` after Render gives you your live URL.
-   Example: `https://your-app-name.onrender.com`
-6. Deploy.
-
-The app now auto-prepares safe defaults for SQLite and storage on Render inside the app folder, so you should not need to manually add `DATABASE_URL`.
-
-## Local Setup
-
-```bash
-npm install
-cp .env.example .env
-npm run db:setup
-npm run dev
-```
-
-Open `http://localhost:3000`.
-
-For real AI image generation, set `OPENAI_API_KEY` in `.env`. Without it, the app still runs and produces a branded fallback poster so the full workflow can be tested.
 
 ## Environment Variables
+
+Use these values:
 
 ```bash
 DATABASE_URL="file:./dev.db"
 OPENAI_API_KEY=""
-OPENAI_IMAGE_MODEL="gpt-image-2"
+OPENAI_IMAGE_MODEL="gpt-image-1.5"
 OPENAI_IMAGE_QUALITY="medium"
 PUBLIC_APP_URL="http://localhost:3000"
 LOCAL_STORAGE_DIR="./.data/storage"
@@ -77,42 +99,30 @@ RATE_LIMIT_WINDOW_MS="60000"
 RATE_LIMIT_MAX="20"
 ```
 
-## Render Deployment
+## Render Settings
 
-The included `render.yaml` provisions a Node web service with zero extra setup.
+The included `render.yaml` already sets the build and start commands.
 
-1. Push this repo to GitHub.
-2. In Render, create a Blueprint from the repo or create a Web Service manually.
-3. Set `OPENAI_API_KEY`.
-4. Set `PUBLIC_APP_URL` to your Render URL, for example `https://brandposter-ai.onrender.com`.
-5. Optional: set `WEBHOOK_SECRET` and send the same value from n8n as `x-webhook-secret`.
+Manual values if you ever need them:
 
-Manual Render settings:
-
-```bash
+```txt
 Build Command: npm ci && npm run render-build
 Start Command: npm run start
 Health Check Path: /api/health
-DATABASE_URL: do not set unless you specifically want a custom location
-LOCAL_STORAGE_DIR: do not set unless you specifically want a custom location
 ```
 
-## n8n Webhook
-
-Endpoint:
+You should not need to manually set:
 
 ```txt
-POST /api/webhook/generate-poster
+DATABASE_URL
+LOCAL_STORAGE_DIR
 ```
 
-Headers:
+unless you specifically want custom paths.
 
-```txt
-content-type: application/json
-x-webhook-secret: your-secret-if-configured
-```
+## n8n Webhook Example
 
-Example payload:
+Request:
 
 ```json
 {
@@ -122,14 +132,14 @@ Example payload:
   "prompt": "Create a premium New Year greeting post",
   "aspectRatio": "1:1",
   "outputFormat": "png",
-  "referenceImageUrls": ["https://example.com/ref1.jpg"],
+  "referenceImageUrls": [],
   "customTextFields": {
     "cta": "Book a site visit"
   }
 }
 ```
 
-Successful response:
+Success response:
 
 ```json
 {
@@ -137,7 +147,7 @@ Successful response:
   "generationId": "gen_id",
   "imageUrl": "https://your-app.onrender.com/api/files/generated/brand/poster.png",
   "thumbnailUrl": "https://your-app.onrender.com/api/files/generated/brand/thumbs/poster.webp",
-  "brandId": "skyline-builders",
+  "brandId": "brand_id",
   "campaignType": "new_year",
   "promptUsed": "final enhanced prompt",
   "createdAt": "2026-04-30T00:00:00.000Z",
@@ -154,31 +164,35 @@ Failure response:
 }
 ```
 
-## Campaign Prompt Examples
+## Sample Prompt Ideas
 
 - `Create a New Year post`
 - `Create a 2 BHK luxury apartment offer post`
-- `Announce possession starting this month`
-- `Invite buyers for a weekend site visit`
-- `Create a construction progress update for Tower B`
-- `Create a testimonial post for a happy homeowner`
+- `Create a site visit invitation for this weekend`
+- `Create a possession update poster`
+- `Create a project highlight for rooftop amenities`
+- `Create a construction progress post for Tower B`
 
-The app expands these into structured prompts with real estate context, brand colors, typography mood, design rules, campaign type, output format, and safe-space instructions for logo/contact overlays.
-
-## Image Generation Design
-
-`src/lib/openai-image-provider.ts` is the only OpenAI-specific provider file. The current default model is `gpt-image-2`. The app uses image generation/editing when references are available, saves base64 output to storage, and passes the image to `src/lib/poster-compositor.ts`.
-
-Exact logo/contact/website/social/CTA content is not delegated to the model. Sharp composites those mandatory elements after generation so published posters keep reliable brand details.
-
-## Useful Commands
+## Local Commands
 
 ```bash
-npm run dev
+npm ci
 npm run build
-npm run lint
-npm run typecheck
-npm run db:migrate
+npm run db:deploy
 npm run db:seed
-npm run render-build
+npm run start
 ```
+
+Then open:
+
+```txt
+http://localhost:3000
+```
+
+## Current OpenAI Model Default
+
+The default image model in this repo is now `gpt-image-1.5`, based on current official OpenAI image docs.
+
+Sources:
+- [OpenAI image generation guide](https://platform.openai.com/docs/guides/image-generation?lang=javascript)
+- [OpenAI GPT Image 1.5 model page](https://platform.openai.com/docs/models/gpt-image-1.5)

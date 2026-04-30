@@ -10,7 +10,7 @@ services:
       - key: NODE_VERSION
         value: 24
       - key: OPENAI_IMAGE_MODEL
-        value: gpt-image-2
+        value: gpt-image-1.5
       - key: OPENAI_IMAGE_QUALITY
         value: medium
       - key: RATE_LIMIT_WINDOW_MS

@@ -57,7 +57,7 @@ const defaults = {
     existing.LOCAL_STORAGE_DIR ||
     (process.env.RENDER ? renderStorageDir : "./.data/storage"),
   OPENAI_IMAGE_MODEL:
-    process.env.OPENAI_IMAGE_MODEL || existing.OPENAI_IMAGE_MODEL || "gpt-image-2",
+    process.env.OPENAI_IMAGE_MODEL || existing.OPENAI_IMAGE_MODEL || "gpt-image-1.5",
   OPENAI_IMAGE_QUALITY:
     process.env.OPENAI_IMAGE_QUALITY || existing.OPENAI_IMAGE_QUALITY || "medium",
   RATE_LIMIT_WINDOW_MS:

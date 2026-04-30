@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "prisma generate && next build",
+    "dev": "node scripts/prepare-runtime-env.mjs && next dev",
+    "build": "node scripts/prepare-runtime-env.mjs && prisma generate && next build",
     "render-build": "node scripts/prepare-runtime-env.mjs && prisma generate && next build",
     "start": "node scripts/prepare-runtime-env.mjs && prisma migrate deploy && npm run db:seed && next start",
     "lint": "eslint",
