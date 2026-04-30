@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import sharp from "sharp";
 import type { BrandAsset, CampaignTemplate } from "@prisma/client";
 import { getCampaignLabel } from "@/lib/campaigns";
+import { getAspectRatioConfig } from "@/lib/campaigns";
 import { getPrisma } from "@/lib/prisma";
 import { safeJsonParse } from "@/lib/utils";
 import { scrapeBrandResearch } from "@/lib/brand-research";
@@ -201,14 +202,10 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
   };
 
   try {
-    // Load logo buffer for OpenAI
-    const logoBuffer = await getStoredAssetBuffer(logoAsset);
-    
     const generated = await generateImageWithOpenAi({
       prompt: enhancedPrompt,
       aspectRatio: input.aspectRatio,
       outputFormat: input.outputFormat || "png",
-      logoBuffer: logoBuffer || undefined,
       referenceImageUrls: referenceImageUrls.slice(0, 4),
     });
 
@@ -235,8 +232,63 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     throw new Error("Failed to generate image from OpenAI and no fallback available.");
   }
 
-  // Use the generated image directly without post-processing
-  const finalImage = providerBuffer;
+  // Overlay logo on the generated image
+  const ratio = getAspectRatioConfig(input.aspectRatio);
+  const width = ratio.width;
+  const height = ratio.height;
+
+  let finalImage = providerBuffer;
+
+  // Add logo overlay if available
+  const logoBuffer = await getStoredAssetBuffer(logoAsset);
+  if (logoBuffer) {
+    const logoCardWidth = Math.round(width * 0.22);
+    const logoCardHeight = Math.round(height * 0.095);
+    const logoPadding = Math.round(Math.min(logoCardWidth, logoCardHeight) * 0.16);
+    
+    // Prepare logo with white background card
+    const logo = await sharp(logoBuffer)
+      .resize({
+        width: logoCardWidth - logoPadding * 2,
+        height: logoCardHeight - logoPadding * 2,
+        fit: "contain",
+      })
+      .png()
+      .toBuffer();
+
+    const logoCard = await sharp({
+      create: {
+        width: logoCardWidth,
+        height: logoCardHeight,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 0.98 },
+      },
+    })
+      .composite([{ input: logo, gravity: "center" }])
+      .png()
+      .toBuffer();
+
+    // Overlay logo card on generated image
+    finalImage = await sharp(providerBuffer)
+      .resize(width, height, { fit: "cover" })
+      .composite([
+        {
+          input: logoCard,
+          top: Math.round(height * 0.045),
+          left: Math.round(width * 0.06),
+        },
+      ])
+      .png()
+      .toBuffer();
+  } else {
+    // Ensure image is correct size without logo
+    finalImage = await sharp(providerBuffer)
+      .resize(width, height, { fit: "cover" })
+      .png()
+      .toBuffer();
+  }
+
+  // Create thumbnail
   const thumbnail = await sharp(finalImage)
     .resize(480, 480, { fit: "cover", position: "center" })
     .webp({ quality: 88 })

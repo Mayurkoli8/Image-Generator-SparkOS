@@ -61,7 +61,6 @@ export async function generateImageWithOpenAi(options: {
   prompt: string;
   aspectRatio: string;
   outputFormat: string;
-  logoBuffer?: Buffer | null;
   referenceImageUrls?: string[];
 }) {
   const apiKey = getOpenAiApiKey();
@@ -81,36 +80,31 @@ export async function generateImageWithOpenAi(options: {
   const tempFiles: string[] = [];
 
   try {
-    // Prepare images for edit API (if we have logo or references)
-    const hasLogo = options.logoBuffer && options.logoBuffer.length > 0;
+    // Check if we have reference images to use for visual guidance
     const hasReferences = options.referenceImageUrls && options.referenceImageUrls.length > 0;
 
-    if (hasLogo || hasReferences) {
-      // Use the logo as the primary image, or first reference if no logo
-      const primaryImageBuffer = hasLogo 
-        ? options.logoBuffer! 
-        : await fetchRemoteFile(options.referenceImageUrls![0]);
-      
+    if (hasReferences) {
+      // Use first reference image for visual style guidance
+      const primaryImageBuffer = await fetchRemoteFile(options.referenceImageUrls![0]);
       const primaryTmpFile = await writeBufferToTempFile(primaryImageBuffer);
       tempFiles.push(primaryTmpFile);
 
-      // Collect reference images
-      const referenceBuffers: Buffer[] = [];
-      if (hasReferences) {
-        for (const url of options.referenceImageUrls!) {
+      // Collect other reference images
+      if (options.referenceImageUrls!.length > 1) {
+        for (const url of options.referenceImageUrls!.slice(1)) {
           try {
-            const refBuffer = await fetchRemoteFile(url);
-            referenceBuffers.push(refBuffer);
+            await fetchRemoteFile(url);
             usedReferences.push(url);
           } catch (error) {
             console.warn(`Failed to fetch reference image ${url}:`, error);
           }
         }
       }
+      usedReferences.push(options.referenceImageUrls![0]);
 
       // For edit API, we need the image as a File object
       const imageBuffer = fs.readFileSync(primaryTmpFile);
-      const imageFile = new File([imageBuffer], hasLogo ? "logo.png" : "reference.png", { 
+      const imageFile = new File([imageBuffer], "reference.png", { 
         type: "image/png" 
       });
 
@@ -124,7 +118,7 @@ export async function generateImageWithOpenAi(options: {
         output_format: safeFormat,
       });
     } else {
-      // Pure generation without images
+      // Pure generation without reference images
       response = await client.images.generate({
         model,
         prompt: options.prompt,
