@@ -46,8 +46,9 @@ export function buildEnhancedPrompt(options: PromptOptions | PromptWithBrandInfo
     `Format: ${options.aspectRatio} poster, crisp high-resolution photorealistic real estate imagery with integrated text and branding.`,
     
     "POSTER LAYOUT & COMPOSITION:",
-    "- Top-left corner: Leave space for logo (will be added after generation)",
-    brandInfo.headline ? `- Main headline (centered top area): "${brandInfo.headline}"` : "- Include a compelling main headline in the top-center area",
+    "- Top-right corner: LEAVE COMPLETELY EMPTY - reserved for logo placement",
+    "- NO text, NO elements in the top-right area",
+    brandInfo.headline ? `- Main headline (centered top area, NOT in top-right): "${brandInfo.headline}"` : "- Include a compelling main headline in the top-center area",
     brandInfo.headline ? `- Subheadline: "${options.brand.tagline || 'Premium Real Estate'}"` : null,
     "- Bottom footer: Semi-transparent dark bar with brand information and contact details",
     brandInfo.contactDetails ? `- Contact details in footer: ${contactParts.join(" | ")}` : null,
@@ -56,11 +57,11 @@ export function buildEnhancedPrompt(options: PromptOptions | PromptWithBrandInfo
     "DESIGN REQUIREMENTS:",
     "- Background must be stunning real estate imagery (luxury interiors/exteriors, natural lighting)",
     "- Text must be clearly readable with excellent contrast and professional typography",
-    "- Leave clean white space in top-left (approximately 22% width × 9.5% height) for logo placement",
+    "- Keep top-right corner completely blank (20% width × 15% height) for logo to be added manually",
     "- Use brand colors in footer bar and accents throughout",
     "- Maintain premium, sophisticated aesthetic appropriate for luxury real estate",
     "- All text must be sharp, legible, and properly positioned for social media",
-    "- Generate this as a complete, ready-to-post image - no post-processing needed",
+    "- Generate this as a complete, ready-to-post image - only logo will be added post-generation",
     "Prioritize realistic luxury property showcase, natural lighting, sharp details, correct perspective, and premium materials.",
   ].filter((line): line is string => Boolean(line));
 
