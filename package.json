@@ -12,8 +12,8 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
-    "db:setup": "prisma migrate dev --name init && tsx prisma/seed.ts"
+    "db:seed": "node scripts/prepare-runtime-env.mjs && tsx prisma/seed.ts",
+    "db:setup": "prisma migrate dev --name init && node scripts/prepare-runtime-env.mjs && tsx prisma/seed.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
