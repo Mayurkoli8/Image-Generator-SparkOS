@@ -79,9 +79,12 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     campaignType: input.campaignType,
     prompt: input.prompt?.substring(0, 100),
     aspectRatio: input.aspectRatio,
+    outputFormat: input.outputFormat,
+    quality: input.quality,
     source: input.source,
     referenceAssetIds: input.referenceAssetIds?.length,
     referenceImageUrls: input.referenceImageUrls?.length,
+    customTextFields: input.customTextFields,
   });
 
   if (input.requestId) {
@@ -161,7 +164,12 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
   });
 
   console.log(`[GeneratePoster] Enhanced prompt generated (${enhancedPrompt.length} chars)`);
-  console.log(`[GeneratePoster] Headline: "${headline}", CTA: "${defaultCta}"`);
+  console.log(`[GeneratePoster] Processing:`, {
+    headline,
+    cta: defaultCta,
+    aspectRatio: input.aspectRatio,
+    outputFormat: input.outputFormat,
+  });
 
   const job = await prisma.generationJob.create({
     data: {

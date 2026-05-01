@@ -195,4 +195,4 @@ The default image model in this repo is now `gpt-image-1.5`, based on current of
 
 Sources:
 - [OpenAI image generation guide](https://platform.openai.com/docs/guides/image-generation?lang=javascript)
-- [OpenAI GPT Image 1.5 model page](https://platform.openai.com/docs/models/gpt-image-1.5)
+- [OpenAI GPT Image 2 model page](https://platform.openai.com/docs/models/gpt-image-2)

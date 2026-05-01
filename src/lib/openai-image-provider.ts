@@ -89,6 +89,7 @@ export async function generateImageWithOpenAi(options: {
       quality,
       hasReferences,
       promptLength: options.prompt.length,
+      aspectRatioInput: options.aspectRatio,
     });
 
     if (hasReferences) {
