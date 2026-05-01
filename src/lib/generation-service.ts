@@ -72,6 +72,18 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     throw new Error("Brand not found.");
   }
 
+  // Debug logging
+  console.log(`[GeneratePoster] Input received:`, {
+    brandId: input.brandId,
+    brandName: brand.name,
+    campaignType: input.campaignType,
+    prompt: input.prompt?.substring(0, 100),
+    aspectRatio: input.aspectRatio,
+    source: input.source,
+    referenceAssetIds: input.referenceAssetIds?.length,
+    referenceImageUrls: input.referenceImageUrls?.length,
+  });
+
   if (input.requestId) {
     const existing = await prisma.generationJob.findUnique({
       where: { requestId: input.requestId },
@@ -147,6 +159,9 @@ export async function generatePoster(input: GeneratePosterInput): Promise<Genera
     },
     cta: defaultCta || undefined,
   });
+
+  console.log(`[GeneratePoster] Enhanced prompt generated (${enhancedPrompt.length} chars)`);
+  console.log(`[GeneratePoster] Headline: "${headline}", CTA: "${defaultCta}"`);
 
   const job = await prisma.generationJob.create({
     data: {

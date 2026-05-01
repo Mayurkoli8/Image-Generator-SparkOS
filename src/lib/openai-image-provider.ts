@@ -83,6 +83,14 @@ export async function generateImageWithOpenAi(options: {
     // Check if we have reference images to use for visual guidance
     const hasReferences = options.referenceImageUrls && options.referenceImageUrls.length > 0;
 
+    console.log(`[OpenAI] Generation request:`, {
+      model,
+      size,
+      quality,
+      hasReferences,
+      promptLength: options.prompt.length,
+    });
+
     if (hasReferences) {
       // Use first reference image for visual style guidance
       const primaryImageBuffer = await fetchRemoteFile(options.referenceImageUrls![0]);
