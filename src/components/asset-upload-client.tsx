@@ -90,11 +90,38 @@ export function AssetUploadClient({
   const [assets, setAssets] = useState(initialAssets);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [isHydrated, setIsHydrated] = useState(false);
   const previewUrlsRef = useRef<string[]>([]);
   const filteredAssets = useMemo(
     () => assets.filter((asset) => (selectedBrandId ? asset.brandId === selectedBrandId : true)),
     [assets, selectedBrandId],
   );
+
+  // Load form preferences from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedBrandId = localStorage.getItem("assetUploadBrandId");
+      const savedAssetType = localStorage.getItem("assetUploadAssetType");
+      
+      if (savedBrandId && brands.some((b) => b.id === savedBrandId)) {
+        setSelectedBrandId(savedBrandId);
+      }
+      
+      if (savedAssetType) {
+        setAssetType(savedAssetType);
+      }
+      
+      setIsHydrated(true);
+    }
+  }, [brands]);
+
+  // Save form preferences to localStorage
+  useEffect(() => {
+    if (isHydrated && typeof window !== "undefined") {
+      localStorage.setItem("assetUploadBrandId", selectedBrandId);
+      localStorage.setItem("assetUploadAssetType", assetType);
+    }
+  }, [selectedBrandId, assetType, isHydrated]);
 
   useEffect(() => () => {
     previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));

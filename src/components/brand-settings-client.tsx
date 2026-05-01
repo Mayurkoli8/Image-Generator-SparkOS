@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Globe2, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,53 @@ export function BrandSettingsClient({ initialBrands }: { initialBrands: BrandRec
   const [form, setForm] = useState<BrandRecord>(initialBrands[0] || emptyBrand);
   const [researching, setResearching] = useState(false);
   const [researchNote, setResearchNote] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Load form data from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedForm = localStorage.getItem("brandSettingsForm");
+      const savedBrands = localStorage.getItem("brandSettingsBrands");
+      
+      if (savedForm) {
+        try {
+          const parsed = JSON.parse(savedForm) as BrandRecord;
+          setForm(parsed);
+          if (parsed.id) {
+            setSelectedId(parsed.id);
+          }
+        } catch (error) {
+          console.warn("Failed to load saved form:", error);
+        }
+      }
+      
+      if (savedBrands) {
+        try {
+          const parsed = JSON.parse(savedBrands) as BrandRecord[];
+          setBrands(parsed);
+        } catch (error) {
+          console.warn("Failed to load saved brands:", error);
+        }
+      }
+      
+      setIsHydrated(true);
+    }
+  }, []);
+
+  // Save form data to localStorage whenever it changes
+  useEffect(() => {
+    if (isHydrated && typeof window !== "undefined") {
+      localStorage.setItem("brandSettingsForm", JSON.stringify(form));
+    }
+  }, [form, isHydrated]);
+
+  // Save brands list to localStorage whenever it changes
+  useEffect(() => {
+    if (isHydrated && typeof window !== "undefined") {
+      localStorage.setItem("brandSettingsBrands", JSON.stringify(brands));
+    }
+  }, [brands, isHydrated]);
+
   const selectedBrand = useMemo(
     () => brands.find((brand) => brand.id === selectedId) || (selectedId === "new" ? emptyBrand : brands[0] || emptyBrand),
     [brands, selectedId],
