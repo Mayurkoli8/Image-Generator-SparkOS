@@ -97,7 +97,8 @@ export function AssetUploadClient({
     [assets, selectedBrandId],
   );
 
-  // Load form preferences from localStorage
+  // Load form preferences from localStorage (for UI convenience)
+  // Assets are always loaded from database via initialAssets
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedBrandId = localStorage.getItem("assetUploadBrandId");
@@ -115,7 +116,7 @@ export function AssetUploadClient({
     }
   }, [brands]);
 
-  // Save form preferences to localStorage
+  // Save form preferences to localStorage (for UI convenience only)
   useEffect(() => {
     if (isHydrated && typeof window !== "undefined") {
       localStorage.setItem("assetUploadBrandId", selectedBrandId);

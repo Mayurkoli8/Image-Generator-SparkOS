@@ -64,50 +64,30 @@ export function BrandSettingsClient({ initialBrands }: { initialBrands: BrandRec
   const [researchNote, setResearchNote] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load form data from localStorage on mount
+  // Load form data from localStorage on mount (for UI convenience only)
+  // Database data is always loaded via initialBrands
   useEffect(() => {
     if (typeof window !== "undefined") {
-      const savedForm = localStorage.getItem("brandSettingsForm");
-      const savedBrands = localStorage.getItem("brandSettingsBrands");
+      const savedSelectedId = localStorage.getItem("brandSettingsSelectedId");
       
-      if (savedForm) {
-        try {
-          const parsed = JSON.parse(savedForm) as BrandRecord;
-          setForm(parsed);
-          if (parsed.id) {
-            setSelectedId(parsed.id);
-          }
-        } catch (error) {
-          console.warn("Failed to load saved form:", error);
-        }
-      }
-      
-      if (savedBrands) {
-        try {
-          const parsed = JSON.parse(savedBrands) as BrandRecord[];
-          setBrands(parsed);
-        } catch (error) {
-          console.warn("Failed to load saved brands:", error);
+      if (savedSelectedId && brands.some((b) => b.id === savedSelectedId)) {
+        setSelectedId(savedSelectedId);
+        const selected = brands.find((b) => b.id === savedSelectedId);
+        if (selected) {
+          setForm(selected);
         }
       }
       
       setIsHydrated(true);
     }
-  }, []);
+  }, [brands]);
 
-  // Save form data to localStorage whenever it changes
+  // Save selected brand ID to localStorage (for convenience)
   useEffect(() => {
     if (isHydrated && typeof window !== "undefined") {
-      localStorage.setItem("brandSettingsForm", JSON.stringify(form));
+      localStorage.setItem("brandSettingsSelectedId", selectedId);
     }
-  }, [form, isHydrated]);
-
-  // Save brands list to localStorage whenever it changes
-  useEffect(() => {
-    if (isHydrated && typeof window !== "undefined") {
-      localStorage.setItem("brandSettingsBrands", JSON.stringify(brands));
-    }
-  }, [brands, isHydrated]);
+  }, [selectedId, isHydrated]);
 
   const selectedBrand = useMemo(
     () => brands.find((brand) => brand.id === selectedId) || (selectedId === "new" ? emptyBrand : brands[0] || emptyBrand),
