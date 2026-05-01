@@ -16,6 +16,10 @@ export async function POST(request: Request) {
   const body = await request.json();
   const prisma = getPrisma();
   const requestId = body.requestId || `req_${nanoid(10)}`;
+  
+  // Debug: Log incoming brandId
+  console.log(`[Webhook] Received brandId: ${body.brandId}`);
+
   const brand = body.brandId
     ? await prisma.brand.findFirst({
         where: {
@@ -23,6 +27,9 @@ export async function POST(request: Request) {
         },
       })
     : null;
+
+  // Debug: Log brand lookup result
+  console.log(`[Webhook] Brand lookup result:`, brand ? `Found: ${brand.name}` : "Not found");
 
   const existingWebhook = await prisma.webhookRequest.findUnique({
     where: { requestId },
@@ -50,6 +57,9 @@ export async function POST(request: Request) {
   });
 
   try {
+    // Debug: Log generation start
+    console.log(`[Webhook] Starting generation for brand: ${body.brandId}`);
+    
     const result = await generatePoster({
       brandId: body.brandId,
       prompt: body.prompt,
@@ -64,6 +74,8 @@ export async function POST(request: Request) {
       source: "webhook",
     });
 
+    console.log(`[Webhook] Generation completed successfully: ${result.generationId}`);
+
     await prisma.webhookRequest.update({
       where: { requestId },
       data: {
@@ -76,6 +88,8 @@ export async function POST(request: Request) {
     return Response.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Webhook generation failed.";
+    
+    console.error(`[Webhook] Error during generation:`, message, error);
 
     await prisma.webhookRequest.update({
       where: { requestId },
